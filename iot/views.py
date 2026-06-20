@@ -17,6 +17,7 @@ class IoTIngestView(APIView):
     Body: { "section": "<name>", "payload": { ... } }
     Any missing or invalid field is silently dropped — backend never breaks.
     """
+    required_roles = ['technician']
 
     def post(self, request):
         section = request.data.get("section")
@@ -79,6 +80,7 @@ class IoTBulkIngestView(APIView):
     Body: { "meta": {...}, "pump": {...}, "ecg": {...}, ... }
     Each section is optional — missing ones are skipped, not errored.
     """
+    required_roles = ['technician']
 
     def post(self, request):
         results = {}

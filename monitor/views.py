@@ -6,12 +6,15 @@ from . import state
 
 # snapshot
 class FullSnapshotView(APIView):
+    required_roles = ['doctor', 'technician']
+
     def get(self, request):
         return Response(state.get_state())
 
 
 # section
 class SectionView(APIView):
+    required_roles = ['doctor', 'technician']
     VALID = {"meta", "pump", "ecg", "respiration", "vitals",
              "dialysate", "session", "fluid_balance", "events"}
 
@@ -24,6 +27,8 @@ class SectionView(APIView):
 
 # stream chunk
 class WaveChunkView(APIView):
+    required_roles = ['doctor', 'technician']
+
     def get(self, request):
         chunk = state.generate_wave_chunk(n=int(request.query_params.get("n", 25)))
         return Response(chunk)
