@@ -4,5 +4,5 @@ django-cors-headers>=4.3
 channels>=4.0
 channels-redis>=4.2
 daphne>=4.0
-redis>=5.0
+redis>=5.0,<6.0
 numpy>=1.26
