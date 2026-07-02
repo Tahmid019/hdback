@@ -1,8 +1,51 @@
 from rest_framework import serializers
+from .role_config import ROLE_FIELD_ACCESS
 
+
+# ─── Role-aware field filtering ────────────────────────────────────────────────
+
+class RoleAwareSerializerMixin:
+    """
+    It filters serializer fields based on the user's role.
+
+    The role is passed via serializer context: context={"role": request.user.role} --> look in 'iot/views.py'
+    
+    Field access rules are defined in role_config.ROLE_FIELD_ACCESS.
+
+    Usage:
+
+        class MySerializer(RoleAwareSerializerMixin, serializers.Serializer):
+            class Meta:
+                section_name = "pump"        ----> name of the section whose field we want to filter
+            ...
+
+    Then instantiate with:
+
+        MySerializer(data=payload, context={"role": request.user.role})
+    """
+
+    def get_fields(self):
+        fields = super().get_fields()  # it is a dictionary of Field Objects.
+
+        role = self.context.get("role")
+        if not role:        # None means "all fields allowed"
+            return fields
+
+        section = getattr(self.Meta, "section_name", None) if hasattr(self, "Meta") else None
+        if not section:     # None means "all fields allowed"
+            return fields
+
+        allowed = ROLE_FIELD_ACCESS.get(role, {}).get(section)
+        if allowed is None:     # None means "all fields allowed"
+            return fields
+
+        return {k: v for k, v in fields.items() if k in allowed}
 
 # meta
-class MetaSerializer(serializers.Serializer):
+class MetaSerializer(RoleAwareSerializerMixin, serializers.Serializer):
+    class Meta:
+        section_name = "meta"
+
     patient_id    = serializers.CharField(required=False, allow_null=True)
     physician     = serializers.CharField(required=False, allow_null=True)
     bed           = serializers.CharField(required=False, allow_null=True)
@@ -37,7 +80,10 @@ class EcgSerializer(serializers.Serializer):
 
 
 # respiration
-class RespirationSerializer(serializers.Serializer):
+class RespirationSerializer(RoleAwareSerializerMixin, serializers.Serializer):
+    class Meta:
+        section_name = "respiration"
+
     respiratory_rate  = serializers.FloatField(required=False, allow_null=True)
     tidal_volume      = serializers.FloatField(required=False, allow_null=True)
     waveform          = serializers.ListField(
@@ -90,7 +136,10 @@ class FluidBalanceSerializer(serializers.Serializer):
 
 
 # event
-class EventSerializer(serializers.Serializer):
+class EventSerializer(RoleAwareSerializerMixin, serializers.Serializer):
+    class Meta:
+        section_name = "events"
+
     time    = serializers.CharField()
     type    = serializers.ChoiceField(choices=["info", "warning", "success", "critical"])
     message = serializers.CharField()

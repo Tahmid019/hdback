@@ -40,7 +40,8 @@ class FullSnapshotView(APIView):
 
 # section
 class SectionView(APIView):
-    required_roles = ['doctor', 'technician']
+    required_roles = ['doctor', 'technician', 'patient']
+    
     VALID = {"meta", "pump", "ecg", "respiration", "vitals",
              "dialysate", "session", "fluid_balance", "events"}
 
@@ -52,6 +53,7 @@ class SectionView(APIView):
             )
 
         role = get_role(request)
+        
         if not access.is_section_allowed(role, section):
             return Response(
                 {"error": "not permitted for this role"},

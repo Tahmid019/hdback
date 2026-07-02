@@ -7,6 +7,8 @@ from . import state
 from .role_config import (
     DOCTOR_INCLUDE_WAVE,
     DOCTOR_SECTIONS,
+    PATIENT_INCLUDE_WAVE,
+    PATIENT_SECTIONS,
     TECHNICIAN_INCLUDE_WAVE,
     TECHNICIAN_SECTIONS,
     TECHNICIAN_WAVE_CHUNK_SIZE,
@@ -18,7 +20,7 @@ def build_dashboard_payload(role: str) -> dict:
     
     Return the role based dashboard payload.
 
-    The returned dict always has the shape {"role": <role>, "data": {...}}
+    The returned dict always has the shape {"role": role, "data": {...}}
     so the frontend can rely on it regardless of role.
     
     """
@@ -27,6 +29,10 @@ def build_dashboard_payload(role: str) -> dict:
     if role == "doctor":
         sections = DOCTOR_SECTIONS
         include_wave = DOCTOR_INCLUDE_WAVE
+        wave_n = 0
+    elif role == "patient":
+        sections = PATIENT_SECTIONS
+        include_wave = PATIENT_INCLUDE_WAVE
         wave_n = 0
     else:                                                 # technician (default / fallback)
         sections = TECHNICIAN_SECTIONS
@@ -54,4 +60,6 @@ def is_section_allowed(role: str, section: str) -> bool:
         return True
     if role == "doctor":
         return section in DOCTOR_SECTIONS
+    if role == "patient":
+        return section in PATIENT_SECTIONS
     return False
