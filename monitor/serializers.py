@@ -12,16 +12,13 @@ class RoleAwareSerializerMixin:
     
     Field access rules are defined in role_config.ROLE_FIELD_ACCESS.
 
-    Usage:
+    Example:
 
-        class MySerializer(RoleAwareSerializerMixin, serializers.Serializer):
+        class MetaSerializer(RoleAwareSerializerMixin, serializers.Serializer):
             class Meta:
                 section_name = "pump"        ----> name of the section whose field we want to filter
             ...
 
-    Then instantiate with:
-
-        MySerializer(data=payload, context={"role": request.user.role})
     """
 
     def get_fields(self):

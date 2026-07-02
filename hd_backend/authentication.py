@@ -21,10 +21,10 @@ class CustomJWTAuthentication(JWTAuthentication):
         """
         User = get_user_model()
         
-        #Create a dummy user in memory (this does NOT hit the database)
+        # create a dummy user in memory (this does not hit the database)
         user = User()
         
-        #Populate the fields directly from the decrypted/validated token dictionary
+        # populate the fields directly from the decrypted/validated token dictionary
         user.id = validated_token.get("user_id")
         user.pk = user.id
         user.role = validated_token.get("role", "patient") # Fallback to patient for safety

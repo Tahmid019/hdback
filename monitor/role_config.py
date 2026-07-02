@@ -44,7 +44,7 @@ PATIENT_INCLUDE_WAVE = False
 
 # ----- Field level access (used by RoleAwareSerializerMixin) ------------------------------
 # None = all fields allowed for that section
-# List = only these fields are visible / accepted
+# List = only these fields (of a particular section) are visible / accepted 
 
 ROLE_FIELD_ACCESS = {
     "patient": {

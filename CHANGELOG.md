@@ -1,65 +1,78 @@
 # Changelog
 
-## Role-Based Authorization (June 2026)
+## Feature: Role-Based Access Control (RBAC) & JWT Authentication (July 2026)
 
-Added a hardcoded role-based permission system to the backend. No login/password required — designed to be replaced with JWT/session auth later.
+This release overhauls the authentication and authorization system. We have completely removed the temporary hardcoded role mechanism and replaced it with a robust, stateless JSON Web Token (JWT) authentication layer, paired with view-level role-based permissions.
 
-### How It Works
+### Key Enhancements
 
-1. One variable controls everything — `HARDCODED_ROLE` in `hd_backend/permissions.py` acts as the "currently logged-in" user. Change it to `"doctor"`, `"technician"`, or `"patient"` to simulate different users.
+1. **JWT Authentication Layer (`rest_framework_simplejwt`)**
+   - Implemented JWT-based login using email and password.
+   - Introduced `CustomJWTAuthentication` (in `hd_backend/authentication.py`). Instead of querying the database on every single API request to retrieve the user's role, the JWT payload itself contains the user's `role` claim. The authentication class decodes the token and constructs a stateless `User` object in memory which is then populated using the JWT. This eliminates database overhead for authenticated requests.
 
-2. Each view declares who can access it — Views set a `required_roles` attribute (e.g. `required_roles = ['doctor', 'technician']`). If the attribute is missing, the endpoint is public (anyone can access).
+2. **Role-Based Permission Enforcement**
+   - Introduced `RoleBasedPermission` (in `hd_backend/permissions.py`) as the default global permission class for all DRF views.
+   - **How it works:** Views can now define a `required_roles` list (e.g., `required_roles = ['doctor', 'technician']`). The permission class inspects `request.user.role` (which was attached by the JWT middleware) and ensures it intersects with the view's requirements.
+   - **Default Behavior:** If a view omits the `required_roles` attribute, it defaults to being a **public endpoint** (no auth required).
+   - If authorization fails, the system returns a `403 Forbidden` with a standardized error message.
 
-3. Permission check on every request — `RoleBasedPermission` (applied globally via `settings.py`) checks if `HARDCODED_ROLE` is in the view's `required_roles`. If not → 403 Forbidden.
+3. **User Management (`accounts` App)**
+   - The custom `User` model (`accounts.User`) natively supports the `role` field.
+   - Created a new Django management command `seed_users` to facilitate local development and automated testing.
 
-### Roles
+### 👥 Roles & Access Matrix
 
-| Role         | User              | Can Access                  |
-|--------------|-------------------|-----------------------------|
-| technician   | Tech. Maya Singh  | Dashboard + IoT ingestion   |
-| doctor       | Dr. Aris Thorne   | Dashboard only              |
-| patient      | James O'Brien     | Public endpoints only       |
+We support three distinct roles, mapping to the following business logic rules:
 
-### API Endpoints & Access
+| Role         | Description | Test User Account       | Password  | Core Capabilities |
+|--------------|-------------|-------------------------|-----------|-------------------|
+| **Technician** | Equipment operator | `tech@test.com`         | `test1234`| Full access. Can view the Dashboard, request Waveform streams, and push (POST) IoT sensor data telemetry. |
+| **Doctor**     | Medical supervisor | `doctor@test.com`       | `test1234`| Read-only access. Can view the Dashboard and Machine Snapshot data, but cannot ingest IoT data or stream high-freq waveforms. |
+| **Patient**    | End user | `patient@test.com`      | `test1234`| Extremely limited. Can only access public health checks and unauthenticated fallback views. |
 
-| Endpoint               | Method | Allowed Roles          | Description                          |
-|------------------------|--------|------------------------|--------------------------------------|
-| /api/auth/me/          | GET    | Public                 | Returns current user info            |
-| /api/snapshot/         | GET    | Doctor, Technician     | Full machine state snapshot          |
-| /api/section/\<name\>/ | GET    | Doctor, Technician     | Single section (ecg, pump, vitals)   |
-| /api/wave/             | GET    | Doctor, Technician     | Waveform chunk for streaming         |
-| /iot/ingest/           | POST   | Technician only        | Ingest a single section update       |
-| /iot/ingest/bulk/      | POST   | Technician only        | Ingest multiple sections at once     |
-| /iot/health/           | GET    | Public                 | Health check                         |
-| ws://localhost:8000/ws/monitor/ | WS | -               | Real-time machine state updates      |
+### 🛣️ API Endpoints Summary
 
-### Testing Authorization
+#### Authentication Endpoints (New)
+- `POST /api/auth/login/` - Takes `email` and `password`, returns `access` and `refresh` tokens.
+- `POST /api/auth/refresh/` - Takes a `refresh` token, issues a new `access` token.
+- `GET /api/auth/me/` - Returns the currently authenticated user's ID, name, and role.
 
-```bash
-# 1. Set the role in hd_backend/permissions.py
-HARDCODED_ROLE = "patient"
+#### Monitor & Dashboard Endpoints
+- `GET /api/snapshot/` - Requires: `['doctor', 'technician']`
+- `GET /api/section/<name>/` - Requires: `['doctor', 'technician']`
+- `GET /api/wave/` - Requires: `['technician']`
 
-# 2. Restart the container
-docker compose restart web
+#### IoT Ingestion Endpoints
+- `POST /iot/ingest/` - Requires: `['technician']`
+- `POST /iot/ingest/bulk/` - Requires: `['technician']`
 
-# 3. Hit a protected endpoint — expect 403
-curl http://localhost:8000/api/snapshot/
-# Response: {"detail": "Your role does not have permission to access this resource."}
+#### System Health
+- `GET /iot/health/` - Public endpoint
 
-# 4. Change to "technician", restart — expect 200
-curl http://localhost:8000/api/snapshot/
-# Response: { ...full machine state JSON... }
-```
+### 🛠️ Developer Workflow & Testing
 
-### Files Changed
+To test the RBAC implementation locally, follow this flow:
 
-| File                        | Status   | What Changed                                               |
-|-----------------------------|----------|------------------------------------------------------------|
-| hd_backend/permissions.py   | 🆕 New   | HARDCODED_ROLE, role-user map, RoleBasedPermission class   |
-| hd_backend/auth_views.py    | 🆕 New   | GET /api/auth/me/ — returns current user info              |
-| hd_backend/settings.py      | ✏️ Modified | Added RoleBasedPermission as the default permission class  |
-| hd_backend/urls.py          | ✏️ Modified | Added /api/auth/me/ route                                  |
-| monitor/views.py            | ✏️ Modified | Added required_roles = ['doctor', 'technician'] to views   |
-| iot/views.py                | ✏️ Modified | Added required_roles = ['technician'] to ingest views      |
+1. **Seed the Test Users**
+   Populate the database with the predefined test accounts (creates the Doctor, Technician, and Patient users).
+   ```bash
+   python manage.py seed_users
+   ```
 
-> **Future:** Replace `HARDCODED_ROLE` with real JWT/session authentication. The `RoleBasedPermission` class just needs to read the role from `request.user` instead of the hardcoded variable.
+2. **Run the Automated Batch Tests**
+   The integration test script has been heavily expanded to verify JWT token generation, role parsing, and access denial.
+   ```bash
+   test_backend.bat
+   ```
+   *Note: Tests 26 through 34 specifically validate the new JWT flow, verifying that Doctors are denied from Wave endpoints, Patients are denied from Pump endpoints, etc.*
+
+### 📄 Detailed File Changes
+
+- **`hd_backend/settings.py`**: Added `rest_framework_simplejwt`, configured JWT token lifetimes (30m access, 7d refresh), and wired up `CustomJWTAuthentication` and `RoleBasedPermission` as defaults.
+- **`hd_backend/authentication.py`**: 🆕 Created `CustomJWTAuthentication` subclassing `JWTAuthentication` for stateless user initialization.
+- **`hd_backend/permissions.py`**: 🆕 Created `RoleBasedPermission` to dynamically check `view.required_roles`. Removed old hardcoded role strings.
+- **`hd_backend/urls.py`**: ✏️ Registered `/api/auth/login/`, `/api/auth/refresh/`, and `/api/auth/me/`.
+- **`hd_backend/auth_views.py`**: 🆕 Implemented `CurrentUserView` for the `/api/auth/me/` endpoint.
+- **`accounts/management/commands/seed_users.py`**: 🆕 Created the data seeder command.
+- **`monitor/views.py` & `iot/views.py`**: ✏️ Annotated all critical DRF views with the appropriate `required_roles` attribute.
+- **`test_backend.bat`**: ✏️ Upgraded script to execute `curl` requests with JWT Bearer headers and handle positive/negative assertions.

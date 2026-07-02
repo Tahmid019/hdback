@@ -1,7 +1,7 @@
 '''
 Since we are using email+password for authentication, 
 insted of Djangos AbstractUser which allows for username + password for authentication 
-we need to define a custom Manager to 
+we need to define a custom Manager.
 '''
 
 
