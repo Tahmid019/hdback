@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-prod")
@@ -13,11 +14,16 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt",         #
     "corsheaders",
     "channels",
+    "accounts",                         # 
     "monitor",
     "iot",
 ]
+
+# custom user model (email-based login with role field)
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -64,9 +70,20 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "hd_backend.authentication.CustomJWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["hd_backend.permissions.RoleBasedPermission"],
     "UNAUTHENTICATED_USER": None,
+}
+
+# jwt
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "SIGNING_KEY": SECRET_KEY,
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
 # static

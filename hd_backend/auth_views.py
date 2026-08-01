@@ -1,22 +1,27 @@
 """
-Auth views — currently returns the hardcoded user.
-Replace with real auth lookup once JWT / session auth is wired up.
+This is an endpoint: GET /api/auth/me/  ---> returns the authenticated user's info from the JWT.
 """
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .permissions import get_current_user
+from rest_framework.permissions import IsAuthenticated
 
 
 class CurrentUserView(APIView):
     """
     GET /api/auth/me/
 
-    Returns the current user's id, name, role, and allowed_paths.
-    This endpoint is PUBLIC (no required_roles) so the frontend
-    can always know who is logged in.
+    Returns the current user's id, name, role.
+    Requires a valid JWT access token.
     """
 
-    # No required_roles → public
+    # all roles can access it, but needs to be authenticated/logged-in 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        return Response(get_current_user())
+        user = request.user
+        return Response({
+            "id": user.id,
+            "name": user.name,
+            "role": user.role,
+        })

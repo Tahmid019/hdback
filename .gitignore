@@ -126,3 +126,6 @@ yarn-error.log*
 *.pem
 *.key
 *.crt
+
+
+graphify-out

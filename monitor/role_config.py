@@ -11,7 +11,7 @@ Keys must match top-level keys produced by :func:`monitor.state.get_state`.
 """
 
 # --- Doctor ----------------------------------------------------------------
-# Sections (top-level keys of the state snapshot) the doctor is allowed to see.
+# Sections (keys of the state snapshot) the doctor is allowed to see.
 DOCTOR_SECTIONS = [
     "vitals",
     "dialysate",
@@ -23,7 +23,42 @@ DOCTOR_SECTIONS = [
 DOCTOR_INCLUDE_WAVE = False
 
 # --- Technician ------------------------------------------------------------
-# ``None`` means "all sections" (no filtering).
+# 'None' means "all sections" (no filtering).
 TECHNICIAN_SECTIONS = None
 TECHNICIAN_INCLUDE_WAVE = True
 TECHNICIAN_WAVE_CHUNK_SIZE = 25
+
+# --- Patient ---------------------------------------------------------------
+# Sections a patient is allowed to see (from ROLE.md).
+PATIENT_SECTIONS = [
+    "meta",
+    "respiration",
+    "vitals",
+    "session",
+    "fluid_balance",
+    "events",
+]
+
+PATIENT_INCLUDE_WAVE = False
+
+
+# ----- Field level access (used by RoleAwareSerializerMixin) ------------------------------
+# None = all fields allowed for that section
+# List = only these fields (of a particular section) are visible / accepted 
+
+ROLE_FIELD_ACCESS = {
+    "patient": {
+        "meta":        ["physician", "bed", "system_status"],  # patient_id masked
+        "respiration": ["respiratory_rate"],                    # basic view only
+        "vitals":      None,                                   # full access
+        "session":     None,                                    # full access
+        "fluid_balance": None,                                 # full access
+        "events":      ["time", "type", "message"],            # patient-friendly only
+    },
+    "doctor": {
+        # all fields for all allowed sections
+    },
+    "technician": {
+        # all fields for all allowed sections
+    },
+}

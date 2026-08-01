@@ -173,6 +173,60 @@ curl.exe -s %BASE%/api/dashboard/ | findstr /i "heart_rate blood_flow uf_removed
 echo.
 
 :: -----------------------------------------------
+:: JWT Auth & Role-Based Access Tests (New)
+:: -----------------------------------------------
+echo.
+echo ================================================
+echo   JWT AUTH ^& ROLE-BASED ACCESS TESTS
+echo ================================================
+echo.
+
+echo [26] Login - Doctor
+for /f "delims=" %%i in ('curl.exe -s -X POST %BASE%/api/auth/login/ -H "Content-Type: application/json" -d "{\"email\":\"doctor@test.com\",\"password\":\"test1234\"}" ^| python -c "import sys, json; print(json.load(sys.stdin).get('access', ''))"') do set DOC_TOKEN=%%i
+if not "%DOC_TOKEN%"=="" (echo     Token received ^| PASS ^& set /a PASS+=1) else (echo     No token ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [27] Login - Technician
+for /f "delims=" %%i in ('curl.exe -s -X POST %BASE%/api/auth/login/ -H "Content-Type: application/json" -d "{\"email\":\"tech@test.com\",\"password\":\"test1234\"}" ^| python -c "import sys, json; print(json.load(sys.stdin).get('access', ''))"') do set TECH_TOKEN=%%i
+if not "%TECH_TOKEN%"=="" (echo     Token received ^| PASS ^& set /a PASS+=1) else (echo     No token ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [28] Login - Patient
+for /f "delims=" %%i in ('curl.exe -s -X POST %BASE%/api/auth/login/ -H "Content-Type: application/json" -d "{\"email\":\"patient@test.com\",\"password\":\"test1234\"}" ^| python -c "import sys, json; print(json.load(sys.stdin).get('access', ''))"') do set PAT_TOKEN=%%i
+if not "%PAT_TOKEN%"=="" (echo     Token received ^| PASS ^& set /a PASS+=1) else (echo     No token ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [29] Auth/Me endpoint - Doctor (expect 200)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" -H "Authorization: Bearer %DOC_TOKEN%" %BASE%/api/auth/me/
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [30] Patient Access - Dashboard (expect 200, filtered)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" -H "Authorization: Bearer %PAT_TOKEN%" %BASE%/api/dashboard/
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [31] Patient Access - Vitals Section (allowed, expect 200)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" -H "Authorization: Bearer %PAT_TOKEN%" %BASE%/api/section/vitals/
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [32] Patient Access - Pump Section (denied, expect 403)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" -H "Authorization: Bearer %PAT_TOKEN%" %BASE%/api/section/pump/
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [33] Doctor Access - Wave Chunk (denied, expect 403)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" -H "Authorization: Bearer %DOC_TOKEN%" "%BASE%/api/wave/"
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+echo [34] Missing Token Access - Dashboard (public/patient view, expect 200)
+curl.exe -s -o NUL -w "    Status: %%{http_code}" %BASE%/api/dashboard/
+if %errorlevel%==0 (echo  ^| PASS ^& set /a PASS+=1) else (echo  ^| FAIL ^& set /a FAIL+=1)
+echo.
+
+:: -----------------------------------------------
 :: results
 :: -----------------------------------------------
 echo ================================================

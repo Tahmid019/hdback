@@ -6,3 +6,4 @@ channels-redis>=4.2
 daphne>=4.0
 redis>=5.0,<6.0
 numpy>=1.26
+djangorestframework-simplejwt>=5.3

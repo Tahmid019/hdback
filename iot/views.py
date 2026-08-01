@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class IoTIngestView(APIView):
     """
     POST /iot/ingest/
-    Body: { "section": "<name>", "payload": { ... } }
+    Body: { "section": "name", "payload": { ... } }
     Any missing or invalid field is silently dropped — backend never breaks.
     """
     required_roles = ['technician']
@@ -22,6 +22,7 @@ class IoTIngestView(APIView):
     def post(self, request):
         section = request.data.get("section")
         payload = request.data.get("payload")
+        role = getattr(request.user, "role", None)
 
         # validate section
         if section not in SECTION_SERIALIZERS:
@@ -42,14 +43,14 @@ class IoTIngestView(APIView):
             items = payload if isinstance(payload, list) else [payload]
             valid_items = []
             for item in items:
-                s = ser_class(data=item)
+                s = ser_class(data=item, context={"role": role})
                 if s.is_valid():
                     valid_items.append(s.validated_data)
                 else:
                     logger.warning("IoT event dropped: %s", s.errors)
             cleaned = valid_items
         else:
-            s = ser_class(data=payload)
+            s = ser_class(data=payload, context={"role": role})
             if not s.is_valid():
                 logger.warning("IoT payload partial errors for [%s]: %s", section, s.errors)
             cleaned = {k: v for k, v in (s.validated_data if s.is_valid() else {}).items()}
@@ -84,6 +85,7 @@ class IoTBulkIngestView(APIView):
 
     def post(self, request):
         results = {}
+        role = getattr(request.user, "role", None)
         for section, payload in request.data.items():
             if section not in SECTION_SERIALIZERS:
                 results[section] = "skipped: unknown"
@@ -97,12 +99,12 @@ class IoTBulkIngestView(APIView):
                 items = payload if isinstance(payload, list) else [payload]
                 valid_items = []
                 for item in items:
-                    s = ser_class(data=item)
+                    s = ser_class(data=item, context={"role": role})
                     if s.is_valid():
                         valid_items.append(s.validated_data)
                 cleaned = valid_items
             else:
-                s = ser_class(data=payload)
+                s = ser_class(data=payload, context={"role": role})
                 cleaned = s.validated_data if s.is_valid() else {}
 
             if cleaned:
@@ -111,7 +113,9 @@ class IoTBulkIngestView(APIView):
             else:
                 results[section] = "skipped: validation failed"
 
-        # broadcast full updated state
+        # broadcast full updated state (Using Redis)
+        # the updated 'state' is thrown into a Redis Queue called "monitor",
+        # from there it is broadcasted to every user who has a Websocket connection open. 
         try:
             layer = get_channel_layer()
             async_to_sync(layer.group_send)(
