@@ -5,26 +5,33 @@ from .managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """
-    Custom user model: login by email, with a role field.
-
-    The 'role' field controls all access.
-    Default role is "patient" (least privilege).
-    """
-
     ROLE_CHOICES = [
         ("doctor", "Doctor"),
         ("technician", "Technician"),
         ("patient", "Patient"),
     ]
 
+    # Supabase Auth user id (JWT "sub")
+    supabase_id = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=150, blank=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="patient")
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="patient",
+    )
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    objects = UserManager()   # conects the User & UserManager
+    objects = UserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]

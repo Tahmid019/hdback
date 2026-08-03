@@ -71,20 +71,15 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "hd_backend.authentication.CustomJWTAuthentication",
+        "hd_backend.authentication.supabase_auth.SupabaseAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["hd_backend.permissions.RoleBasedPermission"],
+    "DEFAULT_PERMISSION_CLASSES": ["hd_backend.permissions.IsAuthenticated"],
     "UNAUTHENTICATED_USER": None,
 }
 
 # jwt
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "SIGNING_KEY": SECRET_KEY,
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  
 
 # static
 STATIC_URL = "/static/"

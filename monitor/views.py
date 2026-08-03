@@ -2,6 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework.permissions import IsAuthenticated
+from authentication.supabase_auth import SupabaseAuthentication
+
 from . import access, state
 from .role import get_role
 from .role_config import DOCTOR_SECTIONS
@@ -79,3 +82,14 @@ class WaveChunkView(APIView):
             n=int(request.query_params.get("n", 25))
         )
         return Response(chunk)
+    
+class AuthCheckView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "status": "authenticated",
+            "email": request.user.email,
+            "role": getattr(request, "role", None),
+            "supabase_id": request.user.supabase_id,
+        })
