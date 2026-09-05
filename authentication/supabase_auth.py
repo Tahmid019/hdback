@@ -62,25 +62,42 @@ class SupabaseAuthentication(authentication.BaseAuthentication):
             role = metadata.get("role") or app_metadata.get("role") or "patient"
             full_name = metadata.get("full_name") or email.split("@")[0]
 
-            user, created = User.objects.get_or_create(
-                supabase_id=supabase_id,
-                defaults={
-                    # "username": email,
-                    "email": email,
-                    "name": full_name,
-                    "role": role,
-                },
-            )
+            try:
+                user = User.objects.get(supabase_id=supabase_id)
+                if user.email != email or user.name != full_name or user.role != role:
+                    user.email = email
+                    user.name = full_name
+                    user.role = role
+                    user.save(update_fields=["email", "name", "role"])
+            except User.DoesNotExist:
+                user, _ = User.objects.update_or_create(
+                    email=email,
+                    defaults={
+                        "supabase_id": supabase_id,
+                        "name": full_name,
+                        "role": role,
+                    },
+                )
 
-            if not created and (
-                user.email != email
-                or user.name != full_name
-                or user.role != role
-            ):
-                user.email = email
-                user.name = full_name
-                user.role = role
-                user.save(update_fields=["email", "name", "role"])
+            # user, created = User.objects.get_or_create(
+            #     supabase_id=supabase_id,
+            #     defaults={
+            #         # "username": email,
+            #         "email": email,
+            #         "name": full_name,
+            #         "role": role,
+            #     },
+            # )
+
+            # if not created and (
+            #     user.email != email
+            #     or user.name != full_name
+            #     or user.role != role
+            # ):
+            #     user.email = email
+            #     user.name = full_name
+            #     user.role = role
+            #     user.save(update_fields=["email", "name", "role"])
 
         except Exception as e:
             print(f"[REST Auth] Token verification failed: {e}")
