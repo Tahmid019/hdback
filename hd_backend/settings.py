@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-prod")
@@ -22,7 +25,6 @@ INSTALLED_APPS = [
     "iot",
 ]
 
-# custom user model (email-based login with role field)
 AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
@@ -70,9 +72,7 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "hd_backend.authentication.supabase_auth.SupabaseAuthentication",
-    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PERMISSION_CLASSES": ["hd_backend.permissions.IsAuthenticated"],
     "UNAUTHENTICATED_USER": None,
 }
